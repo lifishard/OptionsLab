@@ -2,6 +2,19 @@
   "name": "rest-express",
   "version": "1.0.0",
   "license": "MIT",
+    "engines": {
+    "node": ">=20.0.0"
+  },
+
+Resulting top of file should look like:
+
+{
+  "name": "rest-express",
+  "version": "1.0.0",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "type": "module",
   "scripts": {
     "dev": "NODE_ENV=development tsx server/index.ts",
