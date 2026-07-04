@@ -30,12 +30,18 @@ function fmt(n: number, digits = 3): string {
 
 // Adaptive Y-axis tick formatter: choose decimals from the tick magnitude so
 // small Greeks (e.g. gamma ~0.04) keep resolution and big values stay compact.
+// Keeps the string short enough (<= 6 chars incl. sign) to fit YAxis width.
 function yTickFormatter(v: number): string {
+  if (!isFinite(v)) return "";
   const a = Math.abs(v);
   if (a === 0) return "0";
-  if (a >= 100) return fmt(v, 0);
-  if (a >= 1) return fmt(v, 1);
-  if (a >= 0.01) return fmt(v, 3);
+  if (a >= 1000) return (v / 1000).toFixed(1) + "k";
+  if (a >= 100) return v.toFixed(0);
+  if (a >= 10) return v.toFixed(1);
+  if (a >= 1) return v.toFixed(2);
+  if (a >= 0.1) return v.toFixed(3);
+  if (a >= 0.01) return v.toFixed(3);
+  if (a >= 0.001) return v.toFixed(4);
   return v.toExponential(1);
 }
 
@@ -337,7 +343,7 @@ export default function Greeks() {
               <p className="mb-2 h-8 text-[11px] leading-tight text-muted-foreground">{m.intuition}</p>
               <div className="h-40">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={series} margin={{ top: 4, right: 6, bottom: 0, left: -18 }}>
+                  <LineChart data={series} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
                     <CartesianGrid stroke="hsl(var(--border))" strokeOpacity={0.4} vertical={false} />
                     <XAxis
                       dataKey="s"
@@ -351,7 +357,7 @@ export default function Greeks() {
                     <YAxis
                       tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10, fontFamily: "var(--font-mono)" }}
                       tickFormatter={yTickFormatter}
-                      width={46}
+                      width={56}
                       stroke="hsl(var(--border))"
                     />
                     <Tooltip content={<ChartTooltip />} cursor={{ stroke: "hsl(var(--muted-foreground))", strokeOpacity: 0.3 }} />
