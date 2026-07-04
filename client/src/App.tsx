@@ -9,6 +9,7 @@ import { Nav } from "@/components/nav";
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/home";
 import Greeks from "@/pages/greeks";
+import Learn from "@/pages/learn";
 import Strategies from "@/pages/strategies";
 import Builder from "@/pages/builder";
 import Scenarios from "@/pages/scenarios";
@@ -20,6 +21,7 @@ function AppRouter() {
     <Switch>
       <Route path="/" component={Home} />
       <Route path="/greeks" component={Greeks} />
+      <Route path="/learn" component={Learn} />
       <Route path="/strategies" component={Strategies} />
       <Route path="/builder" component={Builder} />
       <Route path="/scenarios" component={Scenarios} />

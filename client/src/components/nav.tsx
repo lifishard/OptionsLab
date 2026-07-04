@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 
 const LINKS: { href: string; label: string }[] = [
   { href: "/greeks", label: "Greeks 教学" },
+  { href: "/learn", label: "Learn" },
   { href: "/strategies", label: "策略库" },
   { href: "/builder", label: "组合编辑器" },
   { href: "/scenarios", label: "情景导航" },

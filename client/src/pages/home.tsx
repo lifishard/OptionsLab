@@ -10,6 +10,7 @@ import {
   Compass,
   Flame,
   Table2,
+  BookOpen,
   ArrowRight,
 } from "lucide-react";
 
@@ -22,6 +23,15 @@ const FEATURES = [
     desc: "拖动参数，实时观察 Delta / Gamma / Theta / Vega / Rho 六联曲线如何随市场变化。",
     status: "Available" as const,
     accent: "text-greek-delta",
+  },
+  {
+    href: "/learn",
+    Icon: BookOpen,
+    title: "Learn · 人话讲期权",
+    en: "Learn",
+    desc: "老欧叙事版长文·首篇《期权三要素》——边读边玩互动，把观点翻译成合约。",
+    status: "Available" as const,
+    accent: "text-greek-vega",
   },
   {
     href: "/strategies",
@@ -95,8 +105,8 @@ export default function Home() {
             <span className="text-primary">Greeks</span> 与策略的风险收益特征。
           </h1>
           <p className="mt-4 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-            Interactive tools for options pricing, the Greeks, and multi-leg strategy risk/reward —
-            所有数值均由内置的 Black-Scholes-Merton 定价库实时计算，绝无假数据。
+            希腊字母互动教学 · 老欧叙事版——所有数值均由内置的 Black-Scholes-Merton
+            定价库实时计算，绝无假数据。
           </p>
           <div className="mt-8 flex flex-wrap items-center gap-3">
             <Link href="/greeks">
