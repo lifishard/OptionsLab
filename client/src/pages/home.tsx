@@ -66,7 +66,7 @@ const FEATURES = [
     title: "期权链看板",
     en: "Option Chain",
     desc: "strike × expiry 矩阵，APR 与 Theta 渐变热力上色。",
-    status: "Coming Soon" as const,
+    status: "Available" as const,
     accent: "text-greek-rho",
   },
   {
@@ -128,7 +128,7 @@ export default function Home() {
       <section className="pb-24">
         <h2 className="mb-1 text-sm font-medium text-muted-foreground">模块 · Modules</h2>
         <p className="mb-6 font-mono text-xs text-muted-foreground/70">
-          12 个 Phase · 当前 4 个模块上线
+          12 个 Phase · 当前 5 个模块上线
         </p>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {FEATURES.map((f, i) => {
