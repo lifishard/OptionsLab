@@ -31,12 +31,22 @@ const BIAS: Record<StrategyDef["bias"], { label: string; color: string }> = {
   neutral: { label: "中性", color: "var(--greek-rho)" },
   "bull-mild": { label: "温和看涨 · 收租", color: "var(--greek-delta)" },
   "bear-mild": { label: "温和看跌 · 收租", color: "var(--greek-theta)" },
+  "high-vol": { label: "赌大波动", color: "var(--greek-vega)" },
+  "low-vol": { label: "赌不动 · 收波动", color: "var(--greek-theta)" },
 };
 
 const CAT: Record<StrategyDef["category"], string> = {
   "single-leg": "单腿 · Single-Leg",
   "single-leg-covered": "单腿 + 标的",
   synthetic: "合成 · 桥梁策略",
+  vertical: "垂直价差 · Vertical",
+  "straddle-strangle": "跨式 / 宽跨 · Straddle",
+  butterfly: "蝶式 · Butterfly",
+  condor: "鹰式 · Condor",
+  "time-spread": "时间价差 · Calendar / Diagonal",
+  collar: "领口 · Collar",
+  ratio: "比率价差 · Ratio",
+  exotic: "高级 / 结构化 · Exotic",
 };
 
 // Greek signature pills — sign glyph + color from --greek-*
@@ -65,6 +75,9 @@ export function StrategyPage({ def }: { def: StrategyDef }) {
   const T = dte / 365;
 
   // Re-map legs so any option leg uses the slider K (shift preserved for multi-strike).
+  // dteOffset is carried through unchanged — the primary DTE slider drives the
+  // base expiry, and each leg's own offset (calendars / diagonals / PMCC) is added
+  // on top inside the payoff engine.
   const legs = useMemo(() => {
     return def.legs.map((l) => {
       if (l.K === undefined) return { ...l };
@@ -72,6 +85,11 @@ export function StrategyPage({ def }: { def: StrategyDef }) {
       return { ...l, K: K + shift };
     });
   }, [def.legs, K, initialK]);
+
+  // Time-spread strategies have legs on different expiries — surface it plainly.
+  const dteLegs = def.legs.filter((l) => (l.dteOffset ?? 0) !== 0);
+  const hasTimeSpread = dteLegs.length > 0;
+  const maxOffset = hasTimeSpread ? Math.max(...def.legs.map((l) => l.dteOffset ?? 0)) : 0;
 
   const entry = useMemo(() => entryCost(legs, S, T, R, sigma), [legs, S, T, sigma]);
 
@@ -82,10 +100,10 @@ export function StrategyPage({ def }: { def: StrategyDef }) {
     const steps = 90;
     const rows: { s: number; exp: number; now: number; pos: number; neg: number }[] = [];
     const bes: number[] = [];
-    let prevExp = payoffAtExpiry(lo, legs, entry);
+    let prevExp = payoffAtExpiry(lo, legs, entry, R, sigma);
     for (let i = 0; i <= steps; i++) {
       const s = lo + ((hi - lo) * i) / steps;
-      const exp = payoffAtExpiry(s, legs, entry);
+      const exp = payoffAtExpiry(s, legs, entry, R, sigma);
       const now = payoffNow(s, legs, T, R, sigma, entry);
       rows.push({
         s,
@@ -239,6 +257,16 @@ export function StrategyPage({ def }: { def: StrategyDef }) {
               <SliderRow label="剩余天数 DTE" value={dte} unit="天" min={1} max={180} step={1} onChange={setDte} testid="slider-dte" />
               <SliderRow label="隐含波动率 σ" value={ivPct} unit="%" min={5} max={120} step={1} onChange={setIvPct} testid="slider-iv" />
             </div>
+            {hasTimeSpread && (
+              <div
+                className="mt-4 rounded-md border border-dashed px-3 py-2 font-mono text-[11px] leading-relaxed"
+                style={{ borderColor: "hsl(var(--greek-vega) / 0.4)", color: "hsl(var(--greek-vega))" }}
+                data-testid="note-time-spread"
+              >
+                时间价差 · 两条腿不同到期：近月 {dte}d / 远月 {dte + maxOffset}d
+                <span className="ml-1 text-muted-foreground">（DTE 滑块驱动近月，远月自动 +{maxOffset}d）</span>
+              </div>
+            )}
           </Card>
 
           {/* Payoff chart */}

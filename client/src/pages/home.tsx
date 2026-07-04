@@ -38,7 +38,7 @@ const FEATURES = [
     Icon: Layers,
     title: "策略库",
     en: "Strategy Library",
-    desc: "8 个单腿策略上线——买卖 Call/Put、备兑、保护、现金担保、合成多头，交互式损益图逐个拆解。",
+    desc: "32 个策略——8 单腿 + 24 组合（价差、跨式、蝶鹰、日历、领口、比率、结构化），交互式损益图逐个拆解。",
     status: "Available" as const,
     accent: "text-greek-theta",
   },
@@ -47,8 +47,8 @@ const FEATURES = [
     Icon: SlidersHorizontal,
     title: "组合编辑器",
     en: "Position Builder",
-    desc: "自由搭建多腿仓位，实时损益图、盈亏平衡点与聚合 Greeks。",
-    status: "Coming Soon" as const,
+    desc: "自由搭建多腿仓位，实时损益图、盈亏平衡点、聚合 Greeks 与敏感度热力图。可从策略模板一键载入。",
+    status: "Available" as const,
     accent: "text-greek-gamma",
   },
   {
@@ -128,7 +128,7 @@ export default function Home() {
       <section className="pb-24">
         <h2 className="mb-1 text-sm font-medium text-muted-foreground">模块 · Modules</h2>
         <p className="mb-6 font-mono text-xs text-muted-foreground/70">
-          12 个 Phase · 当前 2 个模块上线
+          12 个 Phase · 当前 3 个模块上线
         </p>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {FEATURES.map((f, i) => {
