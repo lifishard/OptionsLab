@@ -56,8 +56,8 @@ const FEATURES = [
     Icon: Compass,
     title: "情景导航",
     en: "Scenario Navigator",
-    desc: "在价格 / 时间 / 波动率三维上滑动，看仓位如何演化。",
-    status: "Coming Soon" as const,
+    desc: "回答四个问题，从 32 个策略里挑出最贴合你观点的那几个。",
+    status: "Available" as const,
     accent: "text-greek-vega",
   },
   {
@@ -128,7 +128,7 @@ export default function Home() {
       <section className="pb-24">
         <h2 className="mb-1 text-sm font-medium text-muted-foreground">模块 · Modules</h2>
         <p className="mb-6 font-mono text-xs text-muted-foreground/70">
-          12 个 Phase · 当前 3 个模块上线
+          12 个 Phase · 当前 4 个模块上线
         </p>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {FEATURES.map((f, i) => {
