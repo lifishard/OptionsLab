@@ -15,6 +15,8 @@ import {
 } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Switch } from "@/components/ui/switch";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   Dialog,
   DialogContent,
@@ -25,7 +27,7 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { AlertTriangle, ArrowRight, RefreshCw, Save, Table2 } from "lucide-react";
+import { AlertTriangle, ArrowRight, RefreshCw, Save, Table2, GraduationCap, Info } from "lucide-react";
 import type { Leg } from "@/lib/strategies/definitions";
 import { theta as bsmTheta, delta as bsmDelta, gamma as bsmGamma, vega as bsmVega } from "@/lib/options/greeks";
 import {
@@ -113,6 +115,7 @@ export default function Chain() {
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [saveName, setSaveName] = useState("");
   const [saveMemo, setSaveMemo] = useState("");
+  const [beginnerMode, setBeginnerMode] = useState(false);
 
   const chainQuery = useQuery<ChainSnapshot>({
     queryKey: ["/api/chain", symbol],
@@ -234,6 +237,7 @@ export default function Chain() {
 
   const builderHref = legs.length ? `/builder/legs/${encodeLegs(legs)}` : "/builder";
   const stressHref = legs.length ? `/stress/legs/${encodeLegs(legs)}` : "/stress";
+  const rollHref = legs.length ? `/roll/legs/${encodeLegs(legs)}` : "/roll";
 
   return (
     <div className="mx-auto max-w-[1400px] px-4 py-8 sm:px-6">
@@ -271,6 +275,28 @@ export default function Chain() {
             <Button size="sm" variant="outline" className="gap-1.5 border-border" onClick={openSaveDialog} data-testid="button-save-portfolio">
               <Save className="h-3.5 w-3.5" /> Save Portfolio
             </Button>
+            <div className="flex items-center gap-2 rounded-md border border-border px-3 py-1.5">
+              <GraduationCap className="h-3.5 w-3.5 text-muted-foreground" />
+              <Label htmlFor="beginner-mode" className="cursor-pointer text-xs font-medium">
+                新手模式
+              </Label>
+              <Switch
+                id="beginner-mode"
+                checked={beginnerMode}
+                onCheckedChange={setBeginnerMode}
+                data-testid="switch-beginner-mode"
+              />
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button type="button" className="text-muted-foreground hover:text-foreground" data-testid="tooltip-beginner-mode">
+                    <Info className="h-3.5 w-3.5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-[220px] text-xs">
+                  只看最相关的 10 格，别被 500 个数字压垮。
+                </TooltipContent>
+              </Tooltip>
+            </div>
           </div>
 
           <div className="flex items-center gap-4">
@@ -279,6 +305,9 @@ export default function Chain() {
             </Link>
             <Link href={builderHref} className="flex items-center gap-1 text-xs font-medium text-primary hover:underline" data-testid="link-open-builder">
               在编辑器打开当前持仓 <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+            <Link href={rollHref} className="flex items-center gap-1 text-xs font-medium text-primary hover:underline" data-testid="link-open-roll">
+              送到移仓（作为 base） <ArrowRight className="h-3.5 w-3.5" />
             </Link>
           </div>
         </div>
@@ -358,6 +387,7 @@ export default function Chain() {
             snapshot={chainQuery.data}
             legs={legs}
             onAddLeg={addLeg}
+            beginnerMode={beginnerMode}
           />
         ) : null}
       </Card>
@@ -435,11 +465,15 @@ function ChainTable({
   snapshot,
   legs,
   onAddLeg,
+  beginnerMode,
 }: {
   snapshot: ChainSnapshot;
   legs: Leg[];
   onAddLeg: (K: number, type: "call" | "put", side: "long" | "short", qty: number) => void;
+  beginnerMode: boolean;
 }) {
+  // Beginner mode: show only the first 2 expiries (nearest-dated) to cut noise.
+  const expiries = beginnerMode ? snapshot.expiries.slice(0, 2) : snapshot.expiries;
   return (
     <div className="overflow-x-auto" data-testid="chain-table-wrap">
       <table className="w-full border-separate" style={{ borderSpacing: 0 }}>
@@ -448,7 +482,7 @@ function ChainTable({
             <th className="sticky left-0 z-10 border-b border-border bg-card px-2 py-2 text-left font-mono text-[10px] text-muted-foreground">
               STRIKE
             </th>
-            {snapshot.expiries.map((exp, ei) => (
+            {expiries.map((exp, ei) => (
               <th
                 key={exp.date}
                 colSpan={16}
@@ -464,17 +498,33 @@ function ChainTable({
           </tr>
           <tr>
             <th className="sticky left-0 z-10 border-b border-border bg-card px-2 py-1" />
-            {snapshot.expiries.map((exp, ei) => (
+            {expiries.map((exp, ei) => (
               <SubHeaders key={exp.date} tint={ei % 2 === 1} />
             ))}
           </tr>
         </thead>
         <tbody>
           {(() => {
-            // union of all strikes across expiries, sorted, for stable row set
+            // union of all strikes across (possibly filtered) expiries, sorted, for stable row set
             const strikeSet = new Set<number>();
-            snapshot.expiries.forEach((exp) => exp.strikes.forEach((s) => strikeSet.add(s.K)));
-            const strikes = Array.from(strikeSet).sort((a, b) => a - b);
+            expiries.forEach((exp) => exp.strikes.forEach((s) => strikeSet.add(s.K)));
+            let strikes = Array.from(strikeSet).sort((a, b) => a - b);
+
+            // Beginner mode: keep only ATM ±2 strikes (5 rows × 2 expiries ≈ 10 relevant cells).
+            if (beginnerMode && strikes.length > 5) {
+              let atmIdx = 0;
+              let best = Infinity;
+              strikes.forEach((K, i) => {
+                const d = Math.abs(K - snapshot.spot);
+                if (d < best) {
+                  best = d;
+                  atmIdx = i;
+                }
+              });
+              const lo = Math.max(0, atmIdx - 2);
+              const hi = Math.min(strikes.length, atmIdx + 3);
+              strikes = strikes.slice(lo, hi);
+            }
 
             return strikes.map((K) => {
               const netQty = netQtyAtStrike(legs, K);
@@ -500,7 +550,7 @@ function ChainTable({
                       <span className={isAtm ? "text-primary" : undefined}>{fmt(K, K < 10 ? 2 : 1)}</span>
                     </div>
                   </td>
-                  {snapshot.expiries.map((exp, ei) => {
+                  {expiries.map((exp, ei) => {
                     const row = exp.strikes.find((s) => s.K === K);
                     return (
                       <ExpiryCells

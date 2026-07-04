@@ -1,8 +1,16 @@
-import { users, portfolios } from '@shared/schema';
-import type { User, InsertUser, Portfolio, InsertPortfolio } from '@shared/schema';
+import { users, portfolios, portfolioSnapshots } from '@shared/schema';
+import type {
+  User,
+  InsertUser,
+  Portfolio,
+  InsertPortfolio,
+  PortfolioSnapshot,
+  InsertSnapshot,
+  PatchPortfolio,
+} from '@shared/schema';
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import Database from "better-sqlite3";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, asc } from "drizzle-orm";
 
 const sqlite = new Database("data.db");
 sqlite.pragma("journal_mode = WAL");
@@ -14,9 +22,13 @@ export interface IStorage {
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   listPortfolios(symbol: string): Promise<Portfolio[]>;
+  listAllPortfolios(): Promise<Portfolio[]>;
   getPortfolio(id: number): Promise<Portfolio | undefined>;
   createPortfolio(p: InsertPortfolio): Promise<Portfolio>;
+  patchPortfolio(id: number, patch: PatchPortfolio): Promise<Portfolio | undefined>;
   deletePortfolio(id: number): Promise<void>;
+  createSnapshot(portfolioId: number, s: InsertSnapshot): Promise<PortfolioSnapshot>;
+  listSnapshots(portfolioId: number): Promise<PortfolioSnapshot[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -45,12 +57,64 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(portfolios).where(eq(portfolios.id, id)).get();
   }
 
+  async listAllPortfolios(): Promise<Portfolio[]> {
+    return db.select().from(portfolios).orderBy(desc(portfolios.createdAt)).all();
+  }
+
   async createPortfolio(p: InsertPortfolio): Promise<Portfolio> {
-    return db.insert(portfolios).values({ ...p, createdAt: Date.now() }).returning().get();
+    const now = Date.now();
+    return db
+      .insert(portfolios)
+      .values({
+        ...p,
+        createdAt: now,
+        // Default openedAt/openedSpot to open-time if the client didn't supply them.
+        openedAt: p.openedAt ?? now,
+        status: p.status ?? "open",
+      })
+      .returning()
+      .get();
+  }
+
+  async patchPortfolio(id: number, patch: PatchPortfolio): Promise<Portfolio | undefined> {
+    // Drop undefined keys so we only touch the fields the caller sent.
+    const clean: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(patch)) {
+      if (v !== undefined) clean[k] = v;
+    }
+    if (Object.keys(clean).length === 0) {
+      return this.getPortfolio(id);
+    }
+    return db.update(portfolios).set(clean).where(eq(portfolios.id, id)).returning().get();
   }
 
   async deletePortfolio(id: number): Promise<void> {
+    // Remove dependent snapshots first to respect the FK.
+    db.delete(portfolioSnapshots).where(eq(portfolioSnapshots.portfolioId, id)).run();
     db.delete(portfolios).where(eq(portfolios.id, id)).run();
+  }
+
+  async createSnapshot(portfolioId: number, s: InsertSnapshot): Promise<PortfolioSnapshot> {
+    return db
+      .insert(portfolioSnapshots)
+      .values({
+        portfolioId,
+        snapshotAt: Date.now(),
+        spot: s.spot,
+        pnl: s.pnl,
+        greeksJson: JSON.stringify(s.greeks),
+      })
+      .returning()
+      .get();
+  }
+
+  async listSnapshots(portfolioId: number): Promise<PortfolioSnapshot[]> {
+    return db
+      .select()
+      .from(portfolioSnapshots)
+      .where(eq(portfolioSnapshots.portfolioId, portfolioId))
+      .orderBy(asc(portfolioSnapshots.snapshotAt))
+      .all();
   }
 }
 

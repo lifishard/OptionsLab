@@ -3,7 +3,11 @@ import { createServer } from 'node:http';
 import type { Server } from 'node:http';
 import { storage } from "./storage";
 import { getOptionChain, warmCache } from "./yfinance";
-import { insertPortfolioSchema } from "@shared/schema";
+import {
+  insertPortfolioSchema,
+  insertSnapshotSchema,
+  patchPortfolioSchema,
+} from "@shared/schema";
 
 // First 5 tickers to warm-cache on server start. Fire-and-forget: failures
 // must not block startup (handled inside warmCache).
@@ -33,6 +37,17 @@ export async function registerRoutes(
     }
   });
 
+  // ── Ledger · list ALL portfolios across symbols (Phase 7b) ──
+  // Declared BEFORE /:symbol so the literal "all" segment wins the match.
+  app.get("/api/portfolios/all", async (_req, res) => {
+    try {
+      const list = await storage.listAllPortfolios();
+      res.json(list);
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || "读取全部持仓失败" });
+    }
+  });
+
   // ── Portfolio snapshots ──
   app.get("/api/portfolios/:symbol", async (req, res) => {
     const symbol = String(req.params.symbol || "").trim().toUpperCase();
@@ -41,6 +56,62 @@ export async function registerRoutes(
       res.json(list);
     } catch (err: any) {
       res.status(500).json({ error: err?.message || "读取持仓快照失败" });
+    }
+  });
+
+  // ── Ledger · daily PnL/greeks snapshots for one portfolio (Phase 7b) ──
+  app.get("/api/portfolios/:id/snapshots", async (req, res) => {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) {
+      return res.status(400).json({ error: "无效的持仓 ID" });
+    }
+    try {
+      const list = await storage.listSnapshots(id);
+      res.json(list);
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || "读取快照失败" });
+    }
+  });
+
+  app.post("/api/portfolios/:id/snapshots", async (req, res) => {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) {
+      return res.status(400).json({ error: "无效的持仓 ID" });
+    }
+    const parsed = insertSnapshotSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: "快照数据格式不对", details: parsed.error.flatten() });
+    }
+    try {
+      const existing = await storage.getPortfolio(id);
+      if (!existing) {
+        return res.status(404).json({ error: "找不到这个持仓" });
+      }
+      const created = await storage.createSnapshot(id, parsed.data);
+      res.status(201).json(created);
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || "保存快照失败" });
+    }
+  });
+
+  // ── Ledger · update thesis / target / stop / status (Phase 7b) ──
+  app.patch("/api/portfolios/:id", async (req, res) => {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) {
+      return res.status(400).json({ error: "无效的持仓 ID" });
+    }
+    const parsed = patchPortfolioSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: "更新数据格式不对", details: parsed.error.flatten() });
+    }
+    try {
+      const updated = await storage.patchPortfolio(id, parsed.data);
+      if (!updated) {
+        return res.status(404).json({ error: "找不到这个持仓" });
+      }
+      res.json(updated);
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || "更新持仓失败" });
     }
   });
 

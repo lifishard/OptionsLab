@@ -8,8 +8,11 @@ const LINKS: { href: string; label: string }[] = [
   { href: "/strategies", label: "策略库" },
   { href: "/builder", label: "组合编辑器" },
   { href: "/scenarios", label: "情景导航" },
+  { href: "/copilot", label: "决策副驾" },
   { href: "/chain", label: "期权链" },
   { href: "/stress", label: "压力测试" },
+  { href: "/roll", label: "移仓" },
+  { href: "/ledger", label: "持仓台账" },
   { href: "/about", label: "关于" },
 ];
 

@@ -12,9 +12,29 @@ import {
   Table2,
   BookOpen,
   ArrowRight,
+  Repeat,
+  Bookmark,
 } from "lucide-react";
 
 const FEATURES = [
+  {
+    href: "/copilot",
+    Icon: Compass,
+    title: "决策副驾",
+    en: "Decision Copilot",
+    desc: "回答三个问题——涨还是跌？多久？亏多少能睡着？——直接用真实期权链选行权价，给出 2-3 个候选策略，每个都用 BSM 算清最大盈亏与盈亏平衡点。",
+    status: "Available" as const,
+    accent: "text-primary",
+  },
+  {
+    href: "/ledger",
+    Icon: Bookmark,
+    title: "Portfolio Ledger",
+    en: "Portfolio Ledger",
+    desc: "持仓台账——把存下的每份组合连同开仓逻辑（看涨看跌、目标、止损）一起归档，一眼看完你所有开过的仓。",
+    status: "Available" as const,
+    accent: "text-greek-vega",
+  },
   {
     href: "/greeks",
     Icon: Activity,
@@ -78,6 +98,15 @@ const FEATURES = [
     status: "Available" as const,
     accent: "text-pnl-negative",
   },
+  {
+    href: "/roll",
+    Icon: Repeat,
+    title: "移仓引擎",
+    en: "Roll Position Engine",
+    desc: "新持仓 = 旧持仓 △ 移仓单。载入 base、编出 target，集合运算算出关/开/保留三张单，Apply Diff 弹窗看清这次移仓换来了什么。",
+    status: "Available" as const,
+    accent: "text-greek-delta",
+  },
 ];
 
 export default function Home() {
@@ -128,7 +157,7 @@ export default function Home() {
       <section className="pb-24">
         <h2 className="mb-1 text-sm font-medium text-muted-foreground">模块 · Modules</h2>
         <p className="mb-6 font-mono text-xs text-muted-foreground/70">
-          12 个 Phase · 当前 5 个模块上线
+          12 个 Phase · 当前 10 个模块上线
         </p>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {FEATURES.map((f, i) => {

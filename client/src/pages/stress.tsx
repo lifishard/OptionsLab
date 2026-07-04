@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect, useCallback } from "react";
-import { useRoute } from "wouter";
+import { useRoute, Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import {
   LineChart,
@@ -346,7 +346,7 @@ export default function Stress() {
           <Skull className="h-10 w-10 text-muted-foreground/50" />
           <p className="text-sm font-medium">先加个持仓</p>
           <p className="max-w-md text-xs text-muted-foreground">
-            从上方下拉载入一份已保存的持仓，或者去<span className="text-primary"> 期权链 </span>/<span className="text-primary"> 组合编辑器 </span>点“送到压力测试”把持仓带过来。没有持仓，压力无从谈起。
+            从上方下拉载入一份已保存的持仓，或者去<Link href="/chain" className="text-primary underline-offset-4 hover:underline" data-testid="link-empty-chain"> 期权链 </Link>/<Link href="/builder" className="text-primary underline-offset-4 hover:underline" data-testid="link-empty-builder"> 组合编辑器 </Link>点“送到压力测试”把持仓带过来。没有持仓，压力无从谈起。
           </p>
         </Card>
       ) : (

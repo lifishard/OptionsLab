@@ -16,6 +16,9 @@ import Builder from "@/pages/builder";
 import Scenarios from "@/pages/scenarios";
 import Chain from "@/pages/chain";
 import Stress from "@/pages/stress";
+import Roll from "@/pages/roll";
+import Copilot from "@/pages/copilot";
+import Ledger from "@/pages/ledger";
 import About from "@/pages/about";
 
 function AppRouter() {
@@ -29,9 +32,15 @@ function AppRouter() {
       <Route path="/builder" component={Builder} />
       <Route path="/builder/legs/:encoded" component={Builder} />
       <Route path="/scenarios" component={Scenarios} />
+      <Route path="/copilot" component={Copilot} />
+      <Route path="/copilot/:params" component={Copilot} />
       <Route path="/chain" component={Chain} />
       <Route path="/stress" component={Stress} />
       <Route path="/stress/legs/:encoded" component={Stress} />
+      <Route path="/roll" component={Roll} />
+      <Route path="/roll/legs/:encoded" component={Roll} />
+      <Route path="/ledger" component={Ledger} />
+      <Route path="/ledger/:id" component={Ledger} />
       <Route path="/about" component={About} />
       <Route component={NotFound} />
     </Switch>

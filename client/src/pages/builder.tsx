@@ -29,10 +29,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Eraser, TrendingUp, TrendingDown, AlertTriangle, Flame } from "lucide-react";
+import { Plus, Trash2, Eraser, TrendingUp, TrendingDown, AlertTriangle, Flame, Repeat } from "lucide-react";
 import type { Leg } from "@/lib/strategies/definitions";
 import { STRATEGIES, STRATEGY_ORDER } from "@/lib/strategies/definitions";
 import { payoffAtExpiry, payoffNow, entryCost, aggregateGreeks } from "@/lib/strategies/payoff";
+import { LegEditor } from "@/components/leg-editor";
 
 const R = 0.045; // risk-free rate, matches the rest of the app
 
@@ -286,6 +287,15 @@ export default function Builder() {
                 <Flame className="h-3.5 w-3.5" /> 压力测试当前持仓
               </Link>
             )}
+            {legs.length > 0 && (
+              <Link
+                href={`/roll/legs/${encodeLegs(legs)}`}
+                className="mt-2 flex items-center justify-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/10"
+                data-testid="link-roll"
+              >
+                <Repeat className="h-3.5 w-3.5" /> 移仓（作为 base）
+              </Link>
+            )}
           </Card>
 
           {/* Legs */}
@@ -464,133 +474,6 @@ export default function Builder() {
           )}
         </div>
       </div>
-    </div>
-  );
-}
-
-// ── Leg editor row ──
-function LegEditor({
-  index,
-  leg,
-  onChange,
-  onRemove,
-}: {
-  index: number;
-  leg: Leg;
-  onChange: (patch: Partial<Leg>) => void;
-  onRemove: () => void;
-}) {
-  const isStock = leg.type === "stock";
-  const long = leg.side === "long";
-  return (
-    <Card className="border-border bg-card p-3" data-testid={`leg-${index}`}>
-      <div className="flex items-center justify-between gap-2">
-        {/* type toggle */}
-        <div className="inline-flex overflow-hidden rounded-md border border-border">
-          {(["call", "put", "stock"] as const).map((t) => (
-            <button
-              key={t}
-              onClick={() => onChange({ type: t, K: t === "stock" ? undefined : leg.K ?? 100 })}
-              className={`px-2.5 py-1 font-mono text-[11px] transition-colors ${
-                leg.type === t ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
-              }`}
-              data-testid={`leg-${index}-type-${t}`}
-            >
-              {t === "call" ? "Call" : t === "put" ? "Put" : "股票"}
-            </button>
-          ))}
-        </div>
-        <button
-          onClick={onRemove}
-          className="text-muted-foreground transition-colors hover:text-red-400"
-          aria-label="删除这条腿"
-          data-testid={`leg-${index}-remove`}
-        >
-          <Trash2 className="h-4 w-4" />
-        </button>
-      </div>
-
-      <div className="mt-3 flex flex-wrap items-end gap-3">
-        {/* side toggle */}
-        <div className="flex flex-col gap-1">
-          <span className="text-[10px] text-muted-foreground">方向</span>
-          <button
-            onClick={() => onChange({ side: long ? "short" : "long" })}
-            className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1.5 font-mono text-[11px] font-semibold"
-            style={{
-              borderColor: long ? "hsl(var(--pnl-positive) / 0.5)" : "hsl(var(--pnl-negative) / 0.5)",
-              color: long ? "hsl(var(--pnl-positive))" : "hsl(var(--pnl-negative))",
-              background: long ? "hsl(var(--pnl-positive) / 0.08)" : "hsl(var(--pnl-negative) / 0.08)",
-            }}
-            data-testid={`leg-${index}-side`}
-          >
-            {long ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-            {long ? "买入 Long" : "卖出 Short"}
-          </button>
-        </div>
-
-        {/* strike */}
-        {!isStock && (
-          <NumField
-            label="行权价 K"
-            value={leg.K ?? 100}
-            step={1}
-            onChange={(v) => onChange({ K: v })}
-            testid={`leg-${index}-strike`}
-          />
-        )}
-        {/* qty */}
-        <NumField
-          label={isStock ? "手数" : "数量"}
-          value={leg.qty}
-          step={1}
-          min={1}
-          onChange={(v) => onChange({ qty: Math.max(1, Math.round(v)) })}
-          testid={`leg-${index}-qty`}
-        />
-        {/* DTE offset */}
-        {!isStock && (
-          <NumField
-            label="DTE 偏移"
-            value={leg.dteOffset ?? 0}
-            step={5}
-            min={0}
-            onChange={(v) => onChange({ dteOffset: v > 0 ? v : undefined })}
-            testid={`leg-${index}-dte`}
-          />
-        )}
-      </div>
-    </Card>
-  );
-}
-
-function NumField({
-  label,
-  value,
-  step,
-  min,
-  onChange,
-  testid,
-}: {
-  label: string;
-  value: number;
-  step: number;
-  min?: number;
-  onChange: (v: number) => void;
-  testid: string;
-}) {
-  return (
-    <div className="flex flex-col gap-1">
-      <span className="text-[10px] text-muted-foreground">{label}</span>
-      <Input
-        type="number"
-        value={value}
-        step={step}
-        min={min}
-        onChange={(e) => onChange(Number(e.target.value))}
-        className="h-8 w-20 font-mono text-xs"
-        data-testid={testid}
-      />
     </div>
   );
 }
