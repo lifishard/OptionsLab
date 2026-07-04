@@ -1,0 +1,20 @@
+PACKAGE.JSON PATCH INSTRUCTIONS
+--------------------------------
+Add this block to your existing package.json, right after the "license" field:
+
+  "engines": {
+    "node": ">=20.0.0"
+  },
+
+Resulting top of file should look like:
+
+{
+  "name": "rest-express",
+  "version": "1.0.0",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "type": "module",
+  "scripts": {
+    ...
