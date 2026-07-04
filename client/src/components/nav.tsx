@@ -9,6 +9,7 @@ const LINKS: { href: string; label: string }[] = [
   { href: "/builder", label: "组合编辑器" },
   { href: "/scenarios", label: "情景导航" },
   { href: "/chain", label: "期权链" },
+  { href: "/stress", label: "压力测试" },
   { href: "/about", label: "关于" },
 ];
 

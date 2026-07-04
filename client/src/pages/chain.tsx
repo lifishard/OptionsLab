@@ -233,6 +233,7 @@ export default function Chain() {
   };
 
   const builderHref = legs.length ? `/builder/legs/${encodeLegs(legs)}` : "/builder";
+  const stressHref = legs.length ? `/stress/legs/${encodeLegs(legs)}` : "/stress";
 
   return (
     <div className="mx-auto max-w-[1400px] px-4 py-8 sm:px-6">
@@ -272,9 +273,14 @@ export default function Chain() {
             </Button>
           </div>
 
-          <Link href={builderHref} className="flex items-center gap-1 text-xs font-medium text-primary hover:underline" data-testid="link-open-builder">
-            在编辑器打开当前持仓 <ArrowRight className="h-3.5 w-3.5" />
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link href={stressHref} className="flex items-center gap-1 text-xs font-medium text-[hsl(var(--pnl-negative))] hover:underline" data-testid="link-open-stress">
+              送到压力测试 <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+            <Link href={builderHref} className="flex items-center gap-1 text-xs font-medium text-primary hover:underline" data-testid="link-open-builder">
+              在编辑器打开当前持仓 <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+          </div>
         </div>
 
         <div className="mt-4 flex flex-wrap items-center gap-2">

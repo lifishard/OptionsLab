@@ -70,12 +70,12 @@ const FEATURES = [
     accent: "text-greek-rho",
   },
   {
-    href: "/scenarios",
+    href: "/stress",
     Icon: Flame,
-    title: "风控热力图",
-    en: "Risk Heatmap",
-    desc: "组合级风险敞口热力，快速定位尾部风险来源。",
-    status: "Coming Soon" as const,
+    title: "末日压力测试",
+    en: "Doomsday Stress Test",
+    desc: "三滑块一起拧——股价崩、时间跳、恐慌翻。5 张 Cash 曲线 + 每日 Theta 柱状图实时联动，一键“末日按钮”见真章。",
+    status: "Available" as const,
     accent: "text-pnl-negative",
   },
 ];

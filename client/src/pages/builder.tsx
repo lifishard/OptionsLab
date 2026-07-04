@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect, useCallback } from "react";
-import { useRoute } from "wouter";
+import { useRoute, Link } from "wouter";
 import {
   ComposedChart,
   Area,
@@ -29,7 +29,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Eraser, TrendingUp, TrendingDown, AlertTriangle } from "lucide-react";
+import { Plus, Trash2, Eraser, TrendingUp, TrendingDown, AlertTriangle, Flame } from "lucide-react";
 import type { Leg } from "@/lib/strategies/definitions";
 import { STRATEGIES, STRATEGY_ORDER } from "@/lib/strategies/definitions";
 import { payoffAtExpiry, payoffNow, entryCost, aggregateGreeks } from "@/lib/strategies/payoff";
@@ -277,6 +277,15 @@ export default function Builder() {
                 <Eraser className="h-3.5 w-3.5" /> 清空
               </Button>
             </div>
+            {legs.length > 0 && (
+              <Link
+                href={`/stress/legs/${encodeLegs(legs)}`}
+                className="mt-2 flex items-center justify-center gap-1.5 rounded-md border border-[hsl(var(--pnl-negative)/0.5)] px-3 py-1.5 text-xs font-medium text-[hsl(var(--pnl-negative))] transition-colors hover:bg-[hsl(var(--pnl-negative)/0.1)]"
+                data-testid="link-stress-test"
+              >
+                <Flame className="h-3.5 w-3.5" /> 压力测试当前持仓
+              </Link>
+            )}
           </Card>
 
           {/* Legs */}

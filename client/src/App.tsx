@@ -15,6 +15,7 @@ import StrategyDetail from "@/pages/strategy-detail";
 import Builder from "@/pages/builder";
 import Scenarios from "@/pages/scenarios";
 import Chain from "@/pages/chain";
+import Stress from "@/pages/stress";
 import About from "@/pages/about";
 
 function AppRouter() {
@@ -29,6 +30,8 @@ function AppRouter() {
       <Route path="/builder/legs/:encoded" component={Builder} />
       <Route path="/scenarios" component={Scenarios} />
       <Route path="/chain" component={Chain} />
+      <Route path="/stress" component={Stress} />
+      <Route path="/stress/legs/:encoded" component={Stress} />
       <Route path="/about" component={About} />
       <Route component={NotFound} />
     </Switch>
