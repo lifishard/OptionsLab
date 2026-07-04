@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect, useCallback } from "react";
-import { useSearch } from "wouter";
+import { useRoute } from "wouter";
 import {
   ComposedChart,
   Area,
@@ -71,7 +71,14 @@ const sign = (side: Leg["side"]) => (side === "long" ? 1 : -1);
 
 export default function Builder() {
   const { toast } = useToast();
-  const search = useSearch();
+  // Two routes feed this page:
+  //   /builder                     — empty start
+  //   /builder/legs/:encoded       — deep link with base64-encoded legs
+  // We read the encoded param via useRoute; that avoids the wouter hash-routing
+  // pitfall where `?legs=xxx` gets pushed into the outer document search instead
+  // of the hash query.
+  const [, params] = useRoute<{ encoded: string }>("/builder/legs/:encoded");
+  const encodedParam = params?.encoded;
 
   // Market params
   const [S, setS] = useState(100);
@@ -80,10 +87,8 @@ export default function Builder() {
 
   // Seed legs from URL once on mount.
   const [legs, setLegs] = useState<Leg[]>(() => {
-    const params = new URLSearchParams(search);
-    const raw = params.get("legs");
-    if (raw) {
-      const decoded = decodeLegs(raw);
+    if (encodedParam) {
+      const decoded = decodeLegs(encodedParam);
       if (decoded && decoded.length) return decoded;
     }
     return [];
@@ -92,16 +97,12 @@ export default function Builder() {
   const sigma = ivPct / 100;
   const T = dte / 365;
 
-  // Keep URL query in sync so a builder position is shareable.
+  // Keep the URL in sync so a builder position is shareable.
+  // Path scheme: `#/builder` (empty) → `#/builder/legs/<base64>` (with legs).
   useEffect(() => {
-    const params = new URLSearchParams(window.location.hash.split("?")[1] ?? "");
-    if (legs.length) params.set("legs", encodeLegs(legs));
-    else params.delete("legs");
-    const base = window.location.hash.split("?")[0] || "#/builder";
-    const qs = params.toString();
-    const next = qs ? `${base}?${qs}` : base;
-    if (window.location.hash !== next) {
-      window.history.replaceState(null, "", next);
+    const target = legs.length ? `#/builder/legs/${encodeLegs(legs)}` : `#/builder`;
+    if (window.location.hash !== target) {
+      window.history.replaceState(null, "", target);
     }
   }, [legs]);
 

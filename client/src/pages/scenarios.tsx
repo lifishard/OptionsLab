@@ -286,7 +286,7 @@ function RecommendationCard({
           查看策略详情 <ArrowRight className="h-3.5 w-3.5" />
         </Link>
         <Link
-          href={`/builder?legs=${legsParam}`}
+          href={`/builder/legs/${legsParam}`}
           className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
           data-testid={`link-builder-${def.slug}`}
         >

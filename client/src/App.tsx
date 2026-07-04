@@ -26,6 +26,7 @@ function AppRouter() {
       <Route path="/strategies" component={Strategies} />
       <Route path="/strategies/:slug" component={StrategyDetail} />
       <Route path="/builder" component={Builder} />
+      <Route path="/builder/legs/:encoded" component={Builder} />
       <Route path="/scenarios" component={Scenarios} />
       <Route path="/chain" component={Chain} />
       <Route path="/about" component={About} />
