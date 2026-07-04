@@ -8,14 +8,17 @@ import type {
   InsertSnapshot,
   PatchPortfolio,
 } from '@shared/schema';
-import { drizzle } from "drizzle-orm/better-sqlite3";
-import Database from "better-sqlite3";
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
 import { eq, desc, asc } from "drizzle-orm";
 
-const sqlite = new Database("data.db");
-sqlite.pragma("journal_mode = WAL");
+if (!process.env.DATABASE_URL) {
+  throw new Error("DATABASE_URL is not set. Add it to your environment variables.");
+}
 
-export const db = drizzle(sqlite);
+const client = postgres(process.env.DATABASE_URL);
+
+export const db = drizzle(client);
 
 export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
@@ -32,70 +35,71 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
-  async getUser(id: number): Promise<User | undefined> {
-    return db.select().from(users).where(eq(users.id, id)).get();
+  async getUser(id: number) {
+    const rows = await db.select().from(users).where(eq(users.id, id));
+    return rows[0];
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    return db.select().from(users).where(eq(users.username, username)).get();
+  async getUserByUsername(username: string) {
+    const rows = await db.select().from(users).where(eq(users.username, username));
+    return rows[0];
   }
 
-  async createUser(insertUser: InsertUser): Promise<User> {
-    return db.insert(users).values(insertUser).returning().get();
+  async createUser(insertUser: InsertUser) {
+    const rows = await db.insert(users).values(insertUser).returning();
+    return rows[0];
   }
 
-  async listPortfolios(symbol: string): Promise<Portfolio[]> {
+  async listPortfolios(symbol: string) {
     return db
       .select()
       .from(portfolios)
       .where(eq(portfolios.symbol, symbol))
-      .orderBy(desc(portfolios.createdAt))
-      .all();
+      .orderBy(desc(portfolios.createdAt));
   }
 
-  async getPortfolio(id: number): Promise<Portfolio | undefined> {
-    return db.select().from(portfolios).where(eq(portfolios.id, id)).get();
+  async getPortfolio(id: number) {
+    const rows = await db.select().from(portfolios).where(eq(portfolios.id, id));
+    return rows[0];
   }
 
-  async listAllPortfolios(): Promise<Portfolio[]> {
-    return db.select().from(portfolios).orderBy(desc(portfolios.createdAt)).all();
+  async listAllPortfolios() {
+    return db.select().from(portfolios).orderBy(desc(portfolios.createdAt));
   }
 
-  async createPortfolio(p: InsertPortfolio): Promise<Portfolio> {
+  async createPortfolio(p: InsertPortfolio) {
     const now = Date.now();
-    return db
+    const rows = await db
       .insert(portfolios)
       .values({
         ...p,
         createdAt: now,
-        // Default openedAt/openedSpot to open-time if the client didn't supply them.
         openedAt: p.openedAt ?? now,
         status: p.status ?? "open",
       })
-      .returning()
-      .get();
+      .returning();
+    return rows[0];
   }
 
-  async patchPortfolio(id: number, patch: PatchPortfolio): Promise<Portfolio | undefined> {
-    // Drop undefined keys so we only touch the fields the caller sent.
-    const clean: Record<string, unknown> = {};
+  async patchPortfolio(id: number, patch: PatchPortfolio) {
+    const clean: Record<string, any> = {};
     for (const [k, v] of Object.entries(patch)) {
       if (v !== undefined) clean[k] = v;
     }
     if (Object.keys(clean).length === 0) {
       return this.getPortfolio(id);
     }
-    return db.update(portfolios).set(clean).where(eq(portfolios.id, id)).returning().get();
+    const rows = await db.update(portfolios).set(clean).where(eq(portfolios.id, id)).returning();
+    return rows[0];
   }
 
-  async deletePortfolio(id: number): Promise<void> {
-    // Remove dependent snapshots first to respect the FK.
-    db.delete(portfolioSnapshots).where(eq(portfolioSnapshots.portfolioId, id)).run();
-    db.delete(portfolios).where(eq(portfolios.id, id)).run();
+  async deletePortfolio(id: number) {
+    await db.delete(portfolioSnapshots).where(eq(portfolioSnapshots.portfolioId, id));
+    await db.delete(portfolios).where(eq(portfolios.id, id));
   }
 
-  async createSnapshot(portfolioId: number, s: InsertSnapshot): Promise<PortfolioSnapshot> {
-    return db
+  async createSnapshot(portfolioId: number, s: InsertSnapshot) {
+    const rows = await db
       .insert(portfolioSnapshots)
       .values({
         portfolioId,
@@ -104,17 +108,16 @@ export class DatabaseStorage implements IStorage {
         pnl: s.pnl,
         greeksJson: JSON.stringify(s.greeks),
       })
-      .returning()
-      .get();
+      .returning();
+    return rows[0];
   }
 
-  async listSnapshots(portfolioId: number): Promise<PortfolioSnapshot[]> {
+  async listSnapshots(portfolioId: number) {
     return db
       .select()
       .from(portfolioSnapshots)
       .where(eq(portfolioSnapshots.portfolioId, portfolioId))
-      .orderBy(asc(portfolioSnapshots.snapshotAt))
-      .all();
+      .orderBy(asc(portfolioSnapshots.snapshotAt));
   }
 }
 
