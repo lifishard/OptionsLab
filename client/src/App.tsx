@@ -11,6 +11,7 @@ import Home from "@/pages/home";
 import Greeks from "@/pages/greeks";
 import Learn from "@/pages/learn";
 import Strategies from "@/pages/strategies";
+import StrategyDetail from "@/pages/strategy-detail";
 import Builder from "@/pages/builder";
 import Scenarios from "@/pages/scenarios";
 import Chain from "@/pages/chain";
@@ -23,6 +24,7 @@ function AppRouter() {
       <Route path="/greeks" component={Greeks} />
       <Route path="/learn" component={Learn} />
       <Route path="/strategies" component={Strategies} />
+      <Route path="/strategies/:slug" component={StrategyDetail} />
       <Route path="/builder" component={Builder} />
       <Route path="/scenarios" component={Scenarios} />
       <Route path="/chain" component={Chain} />

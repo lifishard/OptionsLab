@@ -10,7 +10,6 @@ import {
 } from "recharts";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
 import { bsmPrice } from "@/lib/options/bsm";
@@ -19,10 +18,11 @@ import { DeltaKInteractive } from "@/components/delta-k-interactive";
 import { LEARN } from "./walkthrough-content";
 import { Clock } from "lucide-react";
 
-// ---- Embedded interactive 1: 观点 -> 3 候选合约 ----
+// ---- Embedded interactive 1: 观点 -> 3 候选合约（静态示范）----
 // Deterministic mapping: 强烈看涨 -> OTM Call, 温和 -> ATM Call, 轻微 -> ITM Call.
+// 观点为固定示范文本 —— 目前不做 NLP 识别，所以设为静态，不给用户"以为能改"的假象。
 function ViewTranslator() {
-  const [view, setView] = useState("我觉得 SPY 未来 30 天会涨到 105");
+  const view = "我觉得 SPY 未来 30 天会涨到 105";
   const candidates = [
     {
       strength: "强烈看涨",
@@ -48,13 +48,16 @@ function ViewTranslator() {
   ];
   return (
     <div className="rounded-lg border border-border bg-card p-4" data-testid="interactive-translator">
-      <Label className="text-xs text-muted-foreground">你的观点</Label>
-      <Input
-        value={view}
-        onChange={(e) => setView(e.target.value)}
-        className="mt-1 border-border bg-muted text-sm"
-        data-testid="input-view"
-      />
+      <div className="flex items-baseline justify-between">
+        <Label className="text-xs text-muted-foreground">示范观点</Label>
+        <span className="font-mono text-[10px] text-muted-foreground/60">示例 · 不可编辑</span>
+      </div>
+      <div
+        className="mt-1 rounded-md border border-border bg-muted/30 px-3 py-2 text-sm text-foreground"
+        data-testid="text-view"
+      >
+        {view}
+      </div>
       <div className="mt-2 text-xs text-muted-foreground">
         同一个观点，按“你觉得能走多远”翻译成三种候选：
       </div>

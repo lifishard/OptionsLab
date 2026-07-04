@@ -38,8 +38,8 @@ const FEATURES = [
     Icon: Layers,
     title: "策略库",
     en: "Strategy Library",
-    desc: "预置价差、跨式、蝶式、铁鹰等结构，一键对比风险收益。",
-    status: "Coming Soon" as const,
+    desc: "8 个单腿策略上线——买卖 Call/Put、备兑、保护、现金担保、合成多头，交互式损益图逐个拆解。",
+    status: "Available" as const,
     accent: "text-greek-theta",
   },
   {
@@ -128,7 +128,7 @@ export default function Home() {
       <section className="pb-24">
         <h2 className="mb-1 text-sm font-medium text-muted-foreground">模块 · Modules</h2>
         <p className="mb-6 font-mono text-xs text-muted-foreground/70">
-          12 个 Phase · 当前 1 个模块上线
+          12 个 Phase · 当前 2 个模块上线
         </p>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {FEATURES.map((f, i) => {
