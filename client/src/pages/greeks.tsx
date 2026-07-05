@@ -145,18 +145,110 @@ function SliderRow({
   );
 }
 
+// ---------- Shared term primer ----------------------------------------------
+// Small reusable strip that reminds readers what each symbol/letter means.
+// Rendered at the top of every step so users who jump around never have to
+// scroll back to find a definition.
+
+interface GlossaryItem {
+  symbol: string;
+  desc: string;
+}
+
+function GlossaryStrip({
+  title,
+  items,
+  testid,
+}: {
+  title: string;
+  items: GlossaryItem[];
+  testid?: string;
+}) {
+  return (
+    <div
+      className="rounded-md border border-border/60 bg-muted/20 p-3 text-xs leading-relaxed text-muted-foreground"
+      data-testid={testid}
+    >
+      <div className="mb-1.5 text-[10px] font-medium uppercase tracking-wider text-foreground/80">
+        {title}
+      </div>
+      <div className="grid gap-x-4 gap-y-1 sm:grid-cols-2">
+        {items.map((it, i) => (
+          <div key={i}>
+            <span className="font-mono text-foreground">{it.symbol}</span>
+            <span className="mx-1">—</span>
+            {it.desc}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Per-Greek term primers. Each row: symbol, plain-language definition.
+// Shown at the top of the Greek step so beginners always know what letter
+// stands for what — no more "what's ν? what's DTE?".
+const GREEK_GLOSSARIES: Record<string, GlossaryItem[]> = {
+  delta: [
+    { symbol: "Δ (Delta)", desc: "S 每升 1 元，权利金变多少元" },
+    { symbol: "S", desc: "标的现价" },
+    { symbol: "K", desc: "行权价（合约里写死的价）" },
+    { symbol: "范围", desc: "Call Δ ∈ [0, 1]；Put Δ ∈ [−1, 0]" },
+  ],
+  gamma: [
+    { symbol: "Γ (Gamma)", desc: "S 每升 1 元，Δ 变多少（“Δ 的加速度”）" },
+    { symbol: "S / K", desc: "标的现价 / 行权价" },
+    { symbol: "峰值", desc: "S≈K（平值 ATM）时 Γ 最大，两头行权价 Γ 小" },
+    { symbol: "相关", desc: "临近到期且 ATM 的合约 Γ 爆炸代表风险大" },
+  ],
+  theta: [
+    { symbol: "Θ (Theta)", desc: "每过 1 天，权利金变化多少（买方通常为负）" },
+    { symbol: "DTE", desc: "Days To Expiry — 剩余到期天数" },
+    { symbol: "单位", desc: "每天 元 / 股（图上已年化 → 日化）" },
+    { symbol: "相关", desc: "DTE 越少，|Θ| 越大；ATM 同 DTE 内 |Θ| 最大" },
+  ],
+  vega: [
+    { symbol: "ν (Vega)", desc: "IV 每升 1 个百分点，权利金变多少元" },
+    { symbol: "IV / σ", desc: "隐含波动率 Implied Volatility（年化%）" },
+    { symbol: "S / K", desc: "标的现价 / 行权价" },
+    { symbol: "相关", desc: "DTE 越长、越靠 ATM，ν 越大" },
+  ],
+  rho: [
+    { symbol: "ρ (Rho)", desc: "无风险利率 r 每升 1 个百分点，权利金变多少" },
+    { symbol: "r", desc: "无风险利率（国库/隔夜率，年化%）" },
+    { symbol: "DTE", desc: "剩余到期天数；越长 ρ 影响越大" },
+    { symbol: "方向", desc: "Call ρ > 0（利率涨，持仓成本上升）；Put ρ < 0" },
+  ],
+};
+
 // ---------- Step 0: intuition side-by-side ----------
 function IntroInteractive() {
   // Two hypothetical SPY contracts, S rises 100 -> 105 (+5%).
   const base = { T: 30 / 365, r: 0.045, sigma: 0.3, q: 0, type: "call" as OptionType };
   const contracts = [
-    { name: "ATM · K=100", K: 100 },
-    { name: "OTM · K=110", K: 110 },
+    { name: "ATM · K=100", K: 100, tag: "平值：行权价 = 现价" },
+    { name: "OTM · K=110", K: 110, tag: "虚值：行权价 > 现价" },
   ];
   return (
     <div className="space-y-4">
+      <GlossaryStrip
+        title="先约定几个符号"
+        testid="intro-glossary"
+        items={[
+          { symbol: "S", desc: "标的现价（这里是 SPY 的股价）" },
+          { symbol: "K", desc: "行权价（合约里写死的那个价）" },
+          { symbol: "Call", desc: "看涨期权，赌 S 涨过 K" },
+          { symbol: "ATM / OTM", desc: "平值 (S≈K) / 虚值 (S<K)" },
+        ]}
+      />
+
       <div className="text-xs text-muted-foreground">
-        假设 SPY 现价 S=100，30 天后一次涨到 S=105（+5%），两张 Call 的收益差多少？
+        场景：SPY 现价 <span className="font-mono text-foreground">S=100</span>，30 天后一次涨到
+        <span className="font-mono text-foreground"> S=105</span>（+5%）。
+        我们拿两张同标的、同到期日的 Call 摆一起——
+        一张行权价 <span className="font-mono text-foreground">K=100</span>（平值），
+        一张行权价 <span className="font-mono text-foreground">K=110</span>（虚值 10%）。
+        看两张的收益差多少。
       </div>
       <div className="grid grid-cols-2 gap-4">
         {contracts.map((c) => {
@@ -169,7 +261,10 @@ function IntroInteractive() {
               className="rounded-lg border border-border bg-muted/30 p-4"
               data-testid={`intro-contract-${c.K}`}
             >
-              <div className="text-xs font-medium text-muted-foreground">{c.name}</div>
+              <div className="flex items-baseline justify-between gap-2">
+                <div className="text-xs font-medium text-muted-foreground">{c.name}</div>
+                <div className="text-[10px] text-muted-foreground/70">{c.tag}</div>
+              </div>
               <div className="mt-3 space-y-1 font-mono text-xs text-muted-foreground">
                 <div className="flex justify-between">
                   <span>权利金 (S=100)</span>
@@ -592,6 +687,14 @@ export default function Greeks() {
 
             {isGreekStep && (
               <>
+                {GREEK_GLOSSARIES[step.id] && (
+                  <GlossaryStrip
+                    title={`先约定几个符号 · ${step.label}`}
+                    testid={`glossary-${step.id}`}
+                    items={GREEK_GLOSSARIES[step.id]}
+                  />
+                )}
+
                 {/* Type selector (Iter B) */}
                 <div className="flex gap-2">
                   {(["call", "put", "compare"] as ChartType[]).map((t) => (
