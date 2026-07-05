@@ -1,6 +1,5 @@
 import type { Express } from "express";
-import { createServer } from 'node:http';
-import type { Server } from 'node:http';
+import type { Server } from "node:http";
 import { storage } from "./storage";
 import { getOptionChain, warmCache } from "./yfinance";
 import {
@@ -9,19 +8,25 @@ import {
   patchPortfolioSchema,
 } from "@shared/schema";
 
-// First 5 tickers to warm-cache on server start. Fire-and-forget: failures
-// must not block startup (handled inside warmCache).
+// First 5 tickers to warm-cache after server startup.
+// Delayed + fire-and-forget so it never interferes with Railway readiness.
 const WARM_TICKERS = ["SPY", "QQQ", "AAPL", "NVDA", "TSLA"];
 
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
-  // prefix all routes with /api
-  // use storage to perform CRUD operations on the storage interface
-  // e.g. app.get("/api/items", async (_req, res) => { ... })
+  // Health check for Railway / manual verification
+  app.get("/api/health", (_req, res) => {
+    res.status(200).json({ ok: true });
+  });
 
-  warmCache(WARM_TICKERS);
+  // Delay warm-cache until after startup path is complete
+  setTimeout(() => {
+    warmCache(WARM_TICKERS).catch((err: any) => {
+      console.error("[warm-cache]", err?.message || err);
+    });
+  }, 3000);
 
   // ── Option chain ──
   app.get("/api/chain/:symbol", async (req, res) => {
@@ -80,7 +85,10 @@ export async function registerRoutes(
     }
     const parsed = insertSnapshotSchema.safeParse(req.body);
     if (!parsed.success) {
-      return res.status(400).json({ error: "快照数据格式不对", details: parsed.error.flatten() });
+      return res.status(400).json({
+        error: "快照数据格式不对",
+        details: parsed.error.flatten(),
+      });
     }
     try {
       const existing = await storage.getPortfolio(id);
@@ -102,7 +110,10 @@ export async function registerRoutes(
     }
     const parsed = patchPortfolioSchema.safeParse(req.body);
     if (!parsed.success) {
-      return res.status(400).json({ error: "更新数据格式不对", details: parsed.error.flatten() });
+      return res.status(400).json({
+        error: "更新数据格式不对",
+        details: parsed.error.flatten(),
+      });
     }
     try {
       const updated = await storage.patchPortfolio(id, parsed.data);
@@ -118,7 +129,10 @@ export async function registerRoutes(
   app.post("/api/portfolios", async (req, res) => {
     const parsed = insertPortfolioSchema.safeParse(req.body);
     if (!parsed.success) {
-      return res.status(400).json({ error: "持仓快照数据格式不对", details: parsed.error.flatten() });
+      return res.status(400).json({
+        error: "持仓快照数据格式不对",
+        details: parsed.error.flatten(),
+      });
     }
     try {
       const created = await storage.createPortfolio(parsed.data);
