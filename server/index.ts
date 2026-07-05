@@ -6,6 +6,19 @@ import { serveStatic } from "./static";
 import { migrate } from "./migrate";
 import { createServer } from "node:http";
 
+// ── Global crash guards ─────────────────────────────────────────────────
+// Print full stack + tag, then exit(1) so Railway restarts the container.
+// Without these, an unhandled rejection prints only "index.cjs:58" + one
+// minified line and dies silently — impossible to debug from Railway logs.
+process.on("unhandledRejection", (reason: any) => {
+  console.error("[fatal] unhandledRejection:", reason?.stack || reason);
+  process.exit(1);
+});
+process.on("uncaughtException", (err: any) => {
+  console.error("[fatal] uncaughtException:", err?.stack || err);
+  process.exit(1);
+});
+
 const app = express();
 const httpServer = createServer(app);
 

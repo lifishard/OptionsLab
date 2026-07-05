@@ -53,7 +53,11 @@ async function buildAll() {
     define: {
       "process.env.NODE_ENV": '"production"',
     },
-    minify: true,
+    // Do NOT minify the server bundle. It doesn't shrink the container by any
+    // meaningful amount and it makes production stack traces ("index.cjs:58")
+    // unreadable — the whole bundle collapses into one 60k-char line.
+    minify: false,
+    sourcemap: "inline",
     external: externals,
     logLevel: "info",
   });

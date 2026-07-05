@@ -21,11 +21,18 @@ export async function registerRoutes(
     res.status(200).json({ ok: true });
   });
 
-  // Delay warm-cache until after startup path is complete
+  // Delay warm-cache until after startup path is complete. Wrap in try/catch
+  // in case warmCache throws synchronously (yahoo-finance2 has done this on
+  // older Node versions) — we never want a background prefetch to kill the
+  // whole container.
   setTimeout(() => {
-    warmCache(WARM_TICKERS).catch((err: any) => {
-      console.error("[warm-cache]", err?.message || err);
-    });
+    try {
+      Promise.resolve(warmCache(WARM_TICKERS)).catch((err: any) => {
+        console.error("[warm-cache]", err?.message || err);
+      });
+    } catch (err: any) {
+      console.error("[warm-cache] sync throw:", err?.message || err);
+    }
   }, 3000);
 
   // ── Option chain ──
