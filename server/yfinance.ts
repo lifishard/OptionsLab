@@ -12,7 +12,24 @@ import { impliedVol } from "../client/src/lib/options/iv";
 // when the module is marked `external`). Resolve defensively at runtime.
 const YahooFinanceCtor: any =
   (YahooFinanceNs as any).default?.default ?? (YahooFinanceNs as any).default ?? YahooFinanceNs;
-const yahooFinance = new YahooFinanceCtor({ suppressNotices: ["yahooSurvey"] });
+
+// Yahoo edge sometimes returns 401/HTML for the default undici User-Agent on
+// cloud egress (Railway, Fly, etc.). Sending a realistic browser UA + a
+// language header keeps the JSON API path stable. Combined with the IPv4
+// dispatcher forced in server/index.ts, this fixes the `fetch failed`
+// observed on Railway boot.
+const BROWSER_HEADERS = {
+  "User-Agent":
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 " +
+    "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+  "Accept": "application/json, text/plain, */*",
+  "Accept-Language": "en-US,en;q=0.9",
+};
+
+const yahooFinance = new YahooFinanceCtor({
+  suppressNotices: ["yahooSurvey"],
+  fetchOptions: { headers: BROWSER_HEADERS },
+});
 
 const R = 0.045; // risk-free rate, matches the rest of the app
 

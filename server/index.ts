@@ -1,4 +1,14 @@
 import "dotenv/config";
+
+// ── Force IPv4 for outbound fetch ────────────────────────────────────────
+// Railway's Node egress + undici sometimes prefers AAAA (IPv6) records that
+// silently hang or reset before TCP, surfacing as `fetch failed` with no
+// underlying error message. Pinning the connect family to 4 sidesteps this
+// entirely. Must run BEFORE any module that creates fetch() clients.
+// Reference: Railway Central Station — undici IPv6 hang.
+import { Agent, setGlobalDispatcher } from "undici";
+setGlobalDispatcher(new Agent({ connect: { family: 4 } }));
+
 import express, { Response, NextFunction } from 'express';
 import type { Request } from 'express';
 import { registerRoutes } from "./routes";
