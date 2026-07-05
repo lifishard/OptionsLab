@@ -4,13 +4,15 @@
 // (Copilot step 1, Chain topbar, Stress topbar, TickerSearch preview) routes
 // through here so a rate-limited crumb endpoint does NOT break basic quotes.
 //
-// Provider chain:
-//   1. Yahoo v8 chart  (https://query1.finance.yahoo.com/v8/finance/chart/…)
-//      — no crumb needed, unauthenticated, works on Railway even when
-//        Yahoo's crumb/getcrumb endpoint 429s cloud IPs.
-//   2. Finnhub /quote  (only if FINNHUB_API_KEY is set) — 60 req/min free.
+// Provider chain (order matters):
+//   1. Finnhub /quote  (if FINNHUB_API_KEY is set) — 60 req/min free, works
+//      from Railway. This is our PRIMARY path in production because Yahoo
+//      429s Railway's IP pool on both query1 and query2 hosts.
+//   2. Yahoo v8 chart  (https://query1.finance.yahoo.com/v8/finance/chart/…)
+//      — no crumb needed. Reliable from residential IPs; hit-or-miss from
+//      cloud IPs. Used when Finnhub is not configured or fails.
 //
-// A 60-second in-memory cache keeps us far under Yahoo's per-IP soft cap
+// A 60-second in-memory cache keeps us far under either provider's rate cap
 // even if the UI polls aggressively.
 
 const BROWSER_HEADERS: Record<string, string> = {
@@ -134,15 +136,10 @@ export async function getQuote(symbol: string): Promise<QuoteSnapshot> {
   }
 
   const errors: string[] = [];
-  try {
-    const q = await fetchYahooChart(key);
-    cache.set(key, { quote: q, error: null, fetchedAt: Date.now() });
-    return q;
-  } catch (err: any) {
-    errors.push(`yahoo-chart: ${err?.message || err}`);
-  }
+  const hasFinnhub = !!process.env.FINNHUB_API_KEY;
 
-  if (process.env.FINNHUB_API_KEY) {
+  // 1) Finnhub first when configured (production path on Railway)
+  if (hasFinnhub) {
     try {
       const q = await fetchFinnhub(key);
       cache.set(key, { quote: q, error: null, fetchedAt: Date.now() });
@@ -152,7 +149,20 @@ export async function getQuote(symbol: string): Promise<QuoteSnapshot> {
     }
   }
 
-  const message = `读取 ${key} 现价失败 (${errors.join("; ")})`;
+  // 2) Yahoo v8 chart fallback
+  try {
+    const q = await fetchYahooChart(key);
+    cache.set(key, { quote: q, error: null, fetchedAt: Date.now() });
+    return q;
+  } catch (err: any) {
+    errors.push(`yahoo-chart: ${err?.message || err}`);
+  }
+
+  // All providers failed — give the operator a clear, actionable message.
+  const hint = hasFinnhub
+    ? "两个数据源都失败了，稍后重试。"
+    : "Railway 上 Yahoo 已被限流，请到 finnhub.io 免费注册后在 Railway 环境变量里设置 FINNHUB_API_KEY。";
+  const message = `读取 ${key} 现价失败。${hint} (详情：${errors.join("; ")})`;
   cache.set(key, { quote: null, error: message, fetchedAt: Date.now() });
   throw new Error(message);
 }
