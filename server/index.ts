@@ -3,7 +3,7 @@ import express, { Response, NextFunction } from 'express';
 import type { Request } from 'express';
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
-//import { migrate } from "./migrate";
+import { migrate } from "./migrate";
 import { createServer } from "node:http";
 
 const app = express();
@@ -63,8 +63,14 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  // Phase 7b · run the idempotent ledger migration before any route touches the DB.
-  //migrate();
+  // Phase 7b · Postgres migration MUST run before any route touches the DB.
+  // Idempotent — safe to run on every boot.
+  try {
+    await migrate();
+  } catch (err) {
+    console.error("[migrate] failed:", err);
+    process.exit(1);
+  }
 
   await registerRoutes(httpServer, app);
 
