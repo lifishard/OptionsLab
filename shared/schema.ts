@@ -31,3 +31,33 @@ export const portfolioSnapshots = pgTable("portfolio_snapshots", {
   pnl: real("pnl").notNull(),
   greeksJson: text("greeks_json").notNull(),
 });
+
+export const insertPortfolioSchema = createInsertSchema(portfolios).pick({
+  symbol: true,
+  name: true,
+  legs: true,
+  memo: true,
+  thesis: true,
+  openedAt: true,
+  openedSpot: true,
+  targetPnL: true,
+  stopLoss: true,
+  status: true,
+});
+
+export const patchPortfolioSchema = z.object({
+  thesis: z.string().nullable().optional(),
+  memo: z.string().nullable().optional(),
+  name: z.string().min(1).optional(),
+  targetPnL: z.number().nullable().optional(),
+  stopLoss: z.number().nullable().optional(),
+  openedAt: z.number().nullable().optional(),
+  openedSpot: z.number().nullable().optional(),
+  status: z.enum(["open", "closed", "rolled"]).optional(),
+});
+
+export const insertSnapshotSchema = z.object({
+  spot: z.number(),
+  pnl: z.number(),
+  greeks: z.record(z.string(), z.number()),
+});
