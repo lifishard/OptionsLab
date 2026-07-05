@@ -39,10 +39,10 @@ import {
   type ScenarioPoint,
   type StressLeg,
 } from "@/lib/scenario/engine";
+import { TickerSearch } from "@/components/ticker-search";
 
 const R = 0.045;
-const TICKERS = ["SPY", "QQQ", "AAPL", "NVDA", "TSLA"] as const;
-type Ticker = (typeof TICKERS)[number];
+
 
 // ── deep-link codec (identical scheme to builder / chain) ──
 function encodeLegs(legs: Leg[]): string {
@@ -111,7 +111,7 @@ export default function Stress() {
   const [, params] = useRoute<{ encoded: string }>("/stress/legs/:encoded");
   const encodedParam = params?.encoded;
 
-  const [symbol, setSymbol] = useState<Ticker>("AAPL");
+  const [symbol, setSymbol] = useState<string>("AAPL");
   const [legs, setLegs] = useState<Leg[]>(() => {
     if (encodedParam) {
       const d = decodeLegs(encodedParam);
@@ -315,20 +315,14 @@ export default function Stress() {
                 ))}
               </SelectContent>
             </Select>
-            <div className="flex items-center gap-1.5">
-              {TICKERS.map((t) => (
-                <button
-                  key={t}
-                  onClick={() => setSymbol(t)}
-                  className={
-                    "rounded-md border px-2.5 py-1 font-mono text-[11px] font-semibold transition-colors " +
-                    (symbol === t ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:text-foreground")
-                  }
-                  data-testid={`button-symbol-${t}`}
-                >
-                  {t}
-                </button>
-              ))}
+            <div className="min-w-[240px] max-w-[360px] flex-1">
+              <TickerSearch
+                activeSymbol={symbol}
+                onSelect={(t) => setSymbol(t.toUpperCase())}
+                testId="stress-search"
+                chipPlacement="hidden"
+                placeholder="搜索标的…"
+              />
             </div>
           </div>
           <div className="flex items-center gap-3 font-mono text-xs">

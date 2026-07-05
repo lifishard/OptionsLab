@@ -30,9 +30,7 @@ import {
   type OptionChainData,
   type Candidate,
 } from "@/lib/copilot/rules";
-
-const TICKERS = ["SPY", "QQQ", "AAPL", "NVDA", "TSLA"] as const;
-type Ticker = (typeof TICKERS)[number];
+import { TickerSearch } from "@/components/ticker-search";
 
 function encodeLegs(legs: Leg[]): string {
   try {
@@ -66,7 +64,7 @@ const RISK_OPTS: { value: RiskAppetite; label: string; sub: string; Icon: any }[
 ];
 
 export default function Copilot() {
-  const [symbol, setSymbol] = useState<Ticker | null>(null);
+  const [symbol, setSymbol] = useState<string | null>(null);
   const [step, setStep] = useState(1);
   const [direction, setDirection] = useState<Direction | null>(null);
   const [timeframe, setTimeframe] = useState<Timeframe | null>(null);
@@ -141,30 +139,19 @@ export default function Copilot() {
         {step === 1 && (
           <StepCard
             title="第一步 · 你想看哪只票？"
-            hint="标的不是背景板，它本身就是交易的一部分。"
+            hint="搜索任何美股（AAPL / MSFT / TQQQ…）——标的不是背景板，它本身就是交易的一部分。"
           >
-            <div className="flex flex-wrap gap-3">
-              {TICKERS.map((t) => (
-                <Button
-                  key={t}
-                  variant={symbol === t ? "default" : "outline"}
-                  className="h-14 w-24 font-mono text-base border-border"
-                  onClick={() => setSymbol(t)}
-                  data-testid={`button-symbol-${t}`}
-                >
-                  {t}
-                </Button>
-              ))}
-            </div>
-            {symbol && (
-              <div className="mt-4 font-mono text-xs text-muted-foreground" data-testid="text-spot">
-                {chainQuery.isLoading ? (
-                  <Skeleton className="h-4 w-32" />
-                ) : chainQuery.isError ? (
-                  <span className="text-[hsl(0_70%_65%)]">读取 {symbol} 现价失败，换一个标的试试。</span>
-                ) : (
-                  <>spot: ${spot.toFixed(2)}</>
-                )}
+            <TickerSearch
+              activeSymbol={symbol}
+              onSelect={setSymbol}
+              testId="copilot-search"
+            />
+            {symbol && chainQuery.isError && (
+              <div
+                className="mt-3 rounded-md border border-[hsl(0_70%_45%)]/40 bg-[hsl(0_70%_45%)]/10 px-3 py-2 font-mono text-xs text-[hsl(0_70%_75%)]"
+                data-testid="copilot-chain-error"
+              >
+                读取 {symbol} 的期权链失败：{(chainQuery.error as Error)?.message || "unknown"}
               </div>
             )}
             <NavButtons

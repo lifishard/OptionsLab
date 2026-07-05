@@ -39,9 +39,7 @@ import {
   netQtyAtStrike,
   type LegGreeks,
 } from "@/lib/options/chain-math";
-
-const TICKERS = ["SPY", "QQQ", "AAPL", "NVDA", "TSLA"] as const;
-type Ticker = (typeof TICKERS)[number];
+import { TickerSearch } from "@/components/ticker-search";
 
 const R = 0.045;
 
@@ -109,7 +107,7 @@ export default function Chain() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const [symbol, setSymbol] = useState<Ticker>("SPY");
+  const [symbol, setSymbol] = useState<string>("SPY");
   const [currentPortfolioId, setCurrentPortfolioId] = useState<number | null>(null);
   const [legs, setLegs] = useState<Leg[]>([]);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
@@ -168,8 +166,8 @@ export default function Chain() {
     [legs],
   );
 
-  const handleSelectTicker = useCallback((t: Ticker) => {
-    setSymbol(t);
+  const handleSelectTicker = useCallback((t: string) => {
+    setSymbol(t.toUpperCase());
     setCurrentPortfolioId(null);
     setLegs([]);
   }, []);
@@ -312,23 +310,14 @@ export default function Chain() {
           </div>
         </div>
 
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          {TICKERS.map((t) => (
-            <button
-              key={t}
-              onClick={() => handleSelectTicker(t)}
-              className={
-                "rounded-md border px-3 py-1.5 font-mono text-xs font-semibold transition-colors " +
-                (symbol === t
-                  ? "border-primary bg-primary/10 text-primary"
-                  : "border-border text-muted-foreground hover:text-foreground")
-              }
-              data-testid={`button-ticker-${t}`}
-            >
-              {t}
-            </button>
-          ))}
-          <div className="ml-auto flex items-center gap-2 font-mono text-sm">
+        <div className="mt-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
+          <TickerSearch
+            activeSymbol={symbol}
+            onSelect={handleSelectTicker}
+            testId="chain-search"
+            label="搜索标的"
+          />
+          <div className="flex items-center gap-2 font-mono text-sm md:mb-2">
             {chainQuery.isLoading ? (
               <Skeleton className="h-5 w-28" />
             ) : chainQuery.isError ? (
