@@ -8,6 +8,7 @@ import { bsmPrice } from "../client/src/lib/options/bsm";
 import { delta, gamma, theta, vega } from "../client/src/lib/options/greeks";
 import { impliedVol } from "../client/src/lib/options/iv";
 import { seedYahooCrumb } from "./yahoo-crumb-seed";
+import { getQuote } from "./quote-provider";
 
 // yahoo-finance2's CJS/ESM default-export interop behaves inconsistently
 // across bundlers (esbuild's `__toESM` does not always unwrap `.default`
@@ -42,7 +43,12 @@ let seedPromise: Promise<void> | null = null;
 let seededAt = 0;
 const SEED_TTL_MS = 6 * 60 * 60 * 1000; // re-seed every 6h; crumbs last longer than that but be defensive
 
-/** Ensure we have a valid crumb + cookies before making any Yahoo call. */
+/**
+ * Best-effort crumb seed. Options endpoints often work WITHOUT a crumb from
+ * cloud IPs (Railway included) — the crumb endpoint itself is more aggressively
+ * rate-limited than /v7/finance/options. So we try to seed once, but if the
+ * seed 429s we don't block: yahoo-finance2 will still try the underlying call.
+ */
 async function ensureSeeded(): Promise<void> {
   const now = Date.now();
   if (seededAt && now - seededAt < SEED_TTL_MS) return;
@@ -53,11 +59,10 @@ async function ensureSeeded(): Promise<void> {
         console.log(`[yfinance] seeded Yahoo crumb: ${crumb.slice(0, 6)}…`);
       })
       .catch((err) => {
-        console.error("[yfinance] seed failed:", err?.message || err);
-        // Fall back to yahoo-finance2's own flow — may still work on some
-        // networks. Reset so a later request tries again.
+        console.warn("[yfinance] seed failed (continuing without crumb):", err?.message || err);
+        // DO NOT rethrow — options endpoint may still work without a crumb.
+        // Reset so a later request retries the seed.
         seedPromise = null;
-        throw err;
       });
   }
   await seedPromise;
@@ -193,14 +198,18 @@ function buildOptionRow(
  * strikes capped at ±30% around spot.
  */
 export async function fetchOptionChain(symbol: string): Promise<ChainSnapshot> {
+  // 1. Pull the current spot via the crumb-free quote provider first. If even
+  //    this fails we bail early with a clear error instead of also failing on
+  //    the options endpoint. This also decouples the price display from the
+  //    options fetch — Copilot/Chain topbars can render a quote even if the
+  //    /v7/finance/options call later 429s.
+  const q = await getQuote(symbol);
+  const spot = q.spot;
+  const changePercent = q.changePercent;
+
+  // 2. Attempt to seed the Yahoo crumb — best-effort. If Yahoo rate-limits
+  //    the crumb endpoint we still try the options call unauthenticated.
   await ensureSeeded();
-  const quote = await yahooFinance.quote(symbol);
-  const spot = quote.regularMarketPrice;
-  if (typeof spot !== "number" || !isFinite(spot) || spot <= 0) {
-    throw new Error(`未能获取 ${symbol} 的现价（Yahoo 返回异常）`);
-  }
-  const changePercent =
-    typeof quote.regularMarketChangePercent === "number" ? quote.regularMarketChangePercent : 0;
 
   const base = await yahooFinance.options(symbol);
   const allDates: Date[] = (base.expirationDates ?? []).map((d: string | number | Date) => new Date(d));

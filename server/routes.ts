@@ -1,16 +1,13 @@
 import type { Express } from "express";
 import type { Server } from "node:http";
 import { storage } from "./storage";
-import { getOptionChain, warmCache } from "./yfinance";
+import { getOptionChain } from "./yfinance";
+import { getQuote, searchTickers } from "./quote-provider";
 import {
   insertPortfolioSchema,
   insertSnapshotSchema,
   patchPortfolioSchema,
 } from "@shared/schema";
-
-// First 5 tickers to warm-cache after server startup.
-// Delayed + fire-and-forget so it never interferes with Railway readiness.
-const WARM_TICKERS = ["SPY", "QQQ", "AAPL", "NVDA", "TSLA"];
 
 export async function registerRoutes(
   httpServer: Server,
@@ -21,19 +18,38 @@ export async function registerRoutes(
     res.status(200).json({ ok: true });
   });
 
-  // Delay warm-cache until after startup path is complete. Wrap in try/catch
-  // in case warmCache throws synchronously (yahoo-finance2 has done this on
-  // older Node versions) — we never want a background prefetch to kill the
-  // whole container.
-  setTimeout(() => {
-    try {
-      Promise.resolve(warmCache(WARM_TICKERS)).catch((err: any) => {
-        console.error("[warm-cache]", err?.message || err);
-      });
-    } catch (err: any) {
-      console.error("[warm-cache] sync throw:", err?.message || err);
+  // No warm-cache on boot — tickers are fetched lazily when the user actually
+  // visits a page that needs them. Keeps container startup fast and avoids
+  // hammering Yahoo's rate limit on cold boot.
+
+  // ── Spot quote (no options fetch, no crumb) ──
+  // Used by Copilot step 1, Chain topbar, Stress topbar, TickerSearch preview.
+  app.get("/api/quote/:symbol", async (req, res) => {
+    const symbol = String(req.params.symbol || "").trim().toUpperCase();
+    if (!symbol) {
+      return res.status(400).json({ error: "缺少标的代码" });
     }
-  }, 3000);
+    try {
+      const q = await getQuote(symbol);
+      res.json(q);
+    } catch (err: any) {
+      res.status(502).json({ error: err?.message || `读取 ${symbol} 现价失败` });
+    }
+  });
+
+  // ── Ticker autocomplete / search (US equities & ETFs only) ──
+  app.get("/api/tickers/search", async (req, res) => {
+    const q = String(req.query.q || "").trim();
+    if (!q) {
+      return res.json([]);
+    }
+    try {
+      const hits = await searchTickers(q);
+      res.json(hits);
+    } catch (err: any) {
+      res.status(502).json({ error: err?.message || "搜索标的失败" });
+    }
+  });
 
   // ── Option chain ──
   app.get("/api/chain/:symbol", async (req, res) => {
