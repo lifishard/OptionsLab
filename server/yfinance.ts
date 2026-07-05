@@ -3,9 +3,11 @@
 // fails or returns nothing usable, callers should surface an error (see routes.ts).
 
 import * as YahooFinanceNs from "yahoo-finance2";
+import { ExtendedCookieJar } from "yahoo-finance2/lib/cookieJar";
 import { bsmPrice } from "../client/src/lib/options/bsm";
 import { delta, gamma, theta, vega } from "../client/src/lib/options/greeks";
 import { impliedVol } from "../client/src/lib/options/iv";
+import { seedYahooCrumb } from "./yahoo-crumb-seed";
 
 // yahoo-finance2's CJS/ESM default-export interop behaves inconsistently
 // across bundlers (esbuild's `__toESM` does not always unwrap `.default`
@@ -26,10 +28,40 @@ const BROWSER_HEADERS = {
   "Accept-Language": "en-US,en;q=0.9",
 };
 
+// Shared cookie jar so we can pre-seed the A1/A3 cookie + crumb before any
+// yahoo-finance2 call. See ./yahoo-crumb-seed.ts for the full rationale.
+const cookieJar = new ExtendedCookieJar();
+
 const yahooFinance = new YahooFinanceCtor({
   suppressNotices: ["yahooSurvey"],
+  cookieJar,
   fetchOptions: { headers: BROWSER_HEADERS },
 });
+
+let seedPromise: Promise<void> | null = null;
+let seededAt = 0;
+const SEED_TTL_MS = 6 * 60 * 60 * 1000; // re-seed every 6h; crumbs last longer than that but be defensive
+
+/** Ensure we have a valid crumb + cookies before making any Yahoo call. */
+async function ensureSeeded(): Promise<void> {
+  const now = Date.now();
+  if (seededAt && now - seededAt < SEED_TTL_MS) return;
+  if (!seedPromise) {
+    seedPromise = seedYahooCrumb(cookieJar)
+      .then((crumb) => {
+        seededAt = Date.now();
+        console.log(`[yfinance] seeded Yahoo crumb: ${crumb.slice(0, 6)}…`);
+      })
+      .catch((err) => {
+        console.error("[yfinance] seed failed:", err?.message || err);
+        // Fall back to yahoo-finance2's own flow — may still work on some
+        // networks. Reset so a later request tries again.
+        seedPromise = null;
+        throw err;
+      });
+  }
+  await seedPromise;
+}
 
 const R = 0.045; // risk-free rate, matches the rest of the app
 
@@ -161,6 +193,7 @@ function buildOptionRow(
  * strikes capped at ±30% around spot.
  */
 export async function fetchOptionChain(symbol: string): Promise<ChainSnapshot> {
+  await ensureSeeded();
   const quote = await yahooFinance.quote(symbol);
   const spot = quote.regularMarketPrice;
   if (typeof spot !== "number" || !isFinite(spot) || spot <= 0) {
