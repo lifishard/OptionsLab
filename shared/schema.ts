@@ -32,6 +32,16 @@ export const portfolioSnapshots = pgTable("portfolio_snapshots", {
   greeksJson: text("greeks_json").notNull(),
 });
 
+// Phase 8 · options chain snapshot cache (Tradier 审核期过渡方案)
+// Stores latest ChainSnapshot payload per symbol as JSON string. Chain-cache
+// hits Postgres when in-memory TTL misses, so Railway can survive Yahoo 429s.
+export const optionsSnapshots = pgTable("options_snapshots", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  symbol: text("symbol").notNull().unique(),
+  fetchedAt: integer("fetched_at").notNull(),
+  payload: text("payload").notNull(),
+});
+
 export const insertPortfolioSchema = createInsertSchema(portfolios).pick({
   symbol: true,
   name: true,
@@ -61,3 +71,11 @@ export const insertSnapshotSchema = z.object({
   pnl: z.number(),
   greeks: z.record(z.string(), z.number()),
 });
+
+export type OptionsSnapshotRow = typeof optionsSnapshots.$inferSelect;
+export const insertOptionsSnapshotSchema = createInsertSchema(optionsSnapshots).pick({
+  symbol: true,
+  fetchedAt: true,
+  payload: true,
+});
+export type InsertOptionsSnapshot = z.infer<typeof insertOptionsSnapshotSchema>;

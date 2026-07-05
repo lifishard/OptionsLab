@@ -63,5 +63,18 @@ export async function migrate(): Promise<void> {
     )
   `);
 
+  // ── Phase 8 · options_snapshots cache table ──────────────────
+  // Durable fallback so a Yahoo 429 storm on Railway doesn't wipe the chain
+  // page. UNIQUE(symbol) lets us upsert with ON CONFLICT.
+  await sql.unsafe(`
+    CREATE TABLE IF NOT EXISTS options_snapshots (
+      id SERIAL PRIMARY KEY,
+      symbol TEXT NOT NULL UNIQUE,
+      fetched_at BIGINT NOT NULL,
+      payload TEXT NOT NULL
+    )
+  `);
+  console.log("[migrate] options_snapshots ready");
+
   console.log("[migrate] Phase 7b ledger migration complete (Postgres)");
 }

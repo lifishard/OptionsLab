@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import type { Server } from "node:http";
 import { storage } from "./storage";
-import { getOptionChain } from "./yfinance";
+import { getChainCached } from "./chain-cache";
 import { getQuote, searchTickers } from "./quote-provider";
 import {
   insertPortfolioSchema,
@@ -58,7 +58,9 @@ export async function registerRoutes(
       return res.status(400).json({ error: "缺少标的代码" });
     }
     try {
-      const snapshot = await getOptionChain(symbol);
+      // Phase 8 · chain-cache layer: memory → Postgres → Yahoo, with
+      // stale-if-error fallback so Yahoo 429s don't blank the page.
+      const snapshot = await getChainCached(symbol);
       res.json(snapshot);
     } catch (err: any) {
       res.status(502).json({ error: err?.message || `读取 ${symbol} 期权链失败` });

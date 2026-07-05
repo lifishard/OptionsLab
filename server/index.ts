@@ -12,6 +12,7 @@ setGlobalDispatcher(new Agent({ connect: { family: 4 } }));
 import express, { Response, NextFunction } from 'express';
 import type { Request } from 'express';
 import { registerRoutes } from "./routes";
+import { warmupWhitelist, startRefreshLoop } from "./chain-cache";
 import { serveStatic } from "./static";
 import { migrate } from "./migrate";
 import { createServer } from "node:http";
@@ -96,6 +97,12 @@ app.use((req, res, next) => {
   }
 
   await registerRoutes(httpServer, app);
+
+  // Phase 8 · chain-cache prewarm + refresh loop. Both non-blocking:
+  // warmupWhitelist schedules its Yahoo fetches on setTimeout so the HTTP
+  // server accepts traffic immediately.
+  warmupWhitelist().catch((err) => console.error("[chain-cache] warmup err:", err));
+  startRefreshLoop();
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
