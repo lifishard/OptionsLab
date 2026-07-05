@@ -52,7 +52,7 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
-        <TooltipProvider>
+        <TooltipProvider delayDuration={100} skipDelayDuration={200}>
           <RecentTickersProvider>
             <Toaster />
             <Router hook={useHashLocation}>

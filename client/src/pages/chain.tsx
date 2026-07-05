@@ -286,12 +286,17 @@ export default function Chain() {
               />
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <button type="button" className="text-muted-foreground hover:text-foreground" data-testid="tooltip-beginner-mode">
+                  <button
+                    type="button"
+                    aria-label="新手模式说明"
+                    className="inline-flex h-5 w-5 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+                    data-testid="tooltip-beginner-mode"
+                  >
                     <Info className="h-3.5 w-3.5" />
                   </button>
                 </TooltipTrigger>
-                <TooltipContent className="max-w-[220px] text-xs">
-                  只看最相关的 10 格，别被 500 个数字压垮。
+                <TooltipContent side="bottom" sideOffset={8} className="max-w-[240px] text-xs leading-relaxed">
+                  开启后只显示最近的 2 个到期日 + ATM 附近的 5 个行权价，噪音从 500 格压到 20 格。关掉就是完整链条。
                 </TooltipContent>
               </Tooltip>
             </div>
