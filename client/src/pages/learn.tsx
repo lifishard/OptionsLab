@@ -241,7 +241,7 @@ export default function Learn() {
       {/* Hero */}
       <div className="mb-3">
         <Badge variant="outline" className="border-border font-mono text-[10px] text-primary">
-          Learn · 首篇
+          Learn · 长文
         </Badge>
       </div>
       <h1 className="text-2xl font-semibold leading-tight tracking-tight" data-testid="learn-title">
