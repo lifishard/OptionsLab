@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Nav } from "@/components/nav";
+import { RecentTickersProvider } from "@/lib/tickers/recent";
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/home";
 import Greeks from "@/pages/greeks";
@@ -52,15 +53,17 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <TooltipProvider>
-          <Toaster />
-          <Router hook={useHashLocation}>
-            <div className="min-h-screen bg-background">
-              <Nav />
-              <main>
-                <AppRouter />
-              </main>
-            </div>
-          </Router>
+          <RecentTickersProvider>
+            <Toaster />
+            <Router hook={useHashLocation}>
+              <div className="min-h-screen bg-background">
+                <Nav />
+                <main>
+                  <AppRouter />
+                </main>
+              </div>
+            </Router>
+          </RecentTickersProvider>
         </TooltipProvider>
       </ThemeProvider>
     </QueryClientProvider>
