@@ -16,7 +16,12 @@ if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL is not set. Add it to your environment variables.");
 }
 
-const client = postgres(process.env.DATABASE_URL);
+// Suppress the flood of "relation ... already exists, skipping" NOTICE lines
+// that our idempotent migration produces on every boot. Real errors still
+// bubble up as exceptions on the query itself.
+const client = postgres(process.env.DATABASE_URL, {
+  onnotice: () => {},
+});
 
 export const db = drizzle(client);
 
