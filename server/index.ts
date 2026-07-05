@@ -3,7 +3,7 @@ import express, { Response, NextFunction } from 'express';
 import type { Request } from 'express';
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
-import { migrate } from "./migrate";
+//import { migrate } from "./migrate";
 import { createServer } from "node:http";
 
 const app = express();
@@ -64,7 +64,7 @@ app.use((req, res, next) => {
 
 (async () => {
   // Phase 7b · run the idempotent ledger migration before any route touches the DB.
-  migrate();
+  //migrate();
 
   await registerRoutes(httpServer, app);
 
