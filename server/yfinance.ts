@@ -9,6 +9,7 @@ import { delta, gamma, theta, vega } from "../client/src/lib/options/greeks";
 import { impliedVol } from "../client/src/lib/options/iv";
 import { seedYahooCrumb } from "./yahoo-crumb-seed";
 import { getQuote } from "./quote-provider";
+import { scheduleYahoo } from "./yahoo-queue";
 
 // yahoo-finance2's CJS/ESM default-export interop behaves inconsistently
 // across bundlers (esbuild's `__toESM` does not always unwrap `.default`
@@ -110,12 +111,16 @@ interface CacheEntry {
   fetchedAt: number;
 }
 
-const TTL_MS = 5 * 60 * 1000; // 5 minutes
+const TTL_MS = 15 * 60 * 1000; // 15 分钟（原 5 分钟；期权链没必要那么新）
 const ERROR_TTL_MS = 60 * 1000; // 60s for failure caching
 
 const cache = new Map<string, CacheEntry>();
 
-const MAX_EXPIRIES = 6;
+// 每个 symbol 的到期日数量直接决定 Yahoo 调用次数：1 + MAX_EXPIRIES。
+// 6 → 7 次/symbol；4 → 5 次/symbol（-29% 流量）。可用环境变量覆盖。
+const MAX_EXPIRIES = Number(process.env.CHAIN_MAX_EXPIRIES) > 0
+  ? Number(process.env.CHAIN_MAX_EXPIRIES)
+  : 4;
 const MIN_DTE = 1;
 const MAX_DTE = 90;
 const STRIKE_BAND = 0.3; // ±30% around spot
@@ -197,7 +202,10 @@ function buildOptionRow(
  * Filters: only expiries with 1 <= dte <= 90, capped at 6 nearest;
  * strikes capped at ±30% around spot.
  */
-export async function fetchOptionChain(symbol: string): Promise<ChainSnapshot> {
+export async function fetchOptionChain(
+  symbol: string,
+  priority: "interactive" | "background" = "interactive",
+): Promise<ChainSnapshot> {
   // 1. Pull the current spot via the crumb-free quote provider first. If even
   //    this fails we bail early with a clear error instead of also failing on
   //    the options endpoint. This also decouples the price display from the
@@ -211,7 +219,12 @@ export async function fetchOptionChain(symbol: string): Promise<ChainSnapshot> {
   //    the crumb endpoint we still try the options call unauthenticated.
   await ensureSeeded();
 
-  const base = await yahooFinance.options(symbol);
+  // 分批：拿 expiry 列表。经全局闸门排队 + 限速。
+  const base: any = await scheduleYahoo<any>(
+    `options ${symbol} (dates)`,
+    () => yahooFinance.options(symbol),
+    priority,
+  );
   const allDates: Date[] = (base.expirationDates ?? []).map((d: string | number | Date) => new Date(d));
   const now = new Date();
 
@@ -231,7 +244,21 @@ export async function fetchOptionChain(symbol: string): Promise<ChainSnapshot> {
   const expiries: ExpiryGroup[] = [];
 
   for (const { date, dte } of eligible) {
-    const chainForDate = await yahooFinance.options(symbol, { date });
+    // 分批：每个到期日一次调用，逐个过闸门 —— 闸门内部保证两次调用之间
+    // 至少间隔 MIN_GAP_MS 并带随机抖动，不再是原来的紧凑串行爆发。
+    let chainForDate: any;
+    try {
+      chainForDate = await scheduleYahoo<any>(
+        `options ${symbol} ${toDateOnly(date)}`,
+        () => yahooFinance.options(symbol, { date }),
+        priority,
+      );
+    } catch (err: any) {
+      // 单个到期日失败不应让整条链失败：已经拿到的到期日照常返回。
+      console.warn(`[yfinance] ${symbol} ${toDateOnly(date)} 拉取失败: ${err?.message || err}`);
+      if (expiries.length > 0) break;
+      throw err;
+    }
     const group = chainForDate.options?.[0];
     if (!group) continue;
 
@@ -274,7 +301,10 @@ export async function fetchOptionChain(symbol: string): Promise<ChainSnapshot> {
  * a rate-limited/broken ticker). Never fabricates data — throws on failure so
  * the caller (route) can surface a real error.
  */
-export async function getOptionChain(symbol: string): Promise<ChainSnapshot> {
+export async function getOptionChain(
+  symbol: string,
+  priority: "interactive" | "background" = "interactive",
+): Promise<ChainSnapshot> {
   const key = symbol.toUpperCase();
   const now = Date.now();
   const cached = cache.get(key);
@@ -288,7 +318,7 @@ export async function getOptionChain(symbol: string): Promise<ChainSnapshot> {
   }
 
   try {
-    const snapshot = await fetchOptionChain(key);
+    const snapshot = await fetchOptionChain(key, priority);
     cache.set(key, { snapshot, error: null, fetchedAt: Date.now() });
     return snapshot;
   } catch (err: any) {
@@ -301,7 +331,7 @@ export async function getOptionChain(symbol: string): Promise<ChainSnapshot> {
 /** Fire-and-forget warm cache for boot-time preloading. Never throws. */
 export function warmCache(symbols: string[]): void {
   for (const sym of symbols) {
-    getOptionChain(sym).catch((err) => {
+    getOptionChain(sym, "background").catch((err) => {
       console.error(`[yfinance] warm-cache failed for ${sym}:`, err?.message || err);
     });
   }

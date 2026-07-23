@@ -1,7 +1,8 @@
 import type { Express } from "express";
 import type { Server } from "node:http";
 import { storage } from "./storage";
-import { getChainCached } from "./chain-cache";
+import { getChainCached, chainCacheStats } from "./chain-cache";
+import { yahooQueueStats } from "./yahoo-queue";
 import { getQuote, searchTickers } from "./quote-provider";
 import {
   insertPortfolioSchema,
@@ -16,6 +17,15 @@ export async function registerRoutes(
   // Health check for Railway / manual verification
   app.get("/api/health", (_req, res) => {
     res.status(200).json({ ok: true });
+  });
+
+  // ── 限流诊断端点：看闸门状态、分组轮转、冷却剩余时间 ──
+  // 部署后直接开 /api/yahoo/status 就能确认节流是否生效。
+  app.get("/api/yahoo/status", (_req, res) => {
+    res.status(200).json({
+      queue: yahooQueueStats(),
+      chainCache: chainCacheStats(),
+    });
   });
 
   // No warm-cache on boot — tickers are fetched lazily when the user actually
